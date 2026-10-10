@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShiftWise</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f6fb;--card:#fff;--tx:#161a26;--mut:#667085;--ln:#e4e7ee;--ac:#4f46e5;--ok:#12a150;--bad:#d92d20;--warn:#f79009}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--card:#1a1d27;--tx:#eef0f6;--mut:#98a2b3;--ln:#2b2f3d;--ac:#8b86ff}}
+:root[data-theme="dark"]{--bg:#0f1117;--card:#1a1d27;--tx:#eef0f6;--mut:#98a2b3;--ln:#2b2f3d;--ac:#8b86ff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{max-width:1040px;margin:auto;padding:16px 16px 0;display:flex;justify-content:space-between;align-items:center}
+h1{margin:0;font-size:24px;letter-spacing:-.5px}h1 span{color:var(--ac)}
+nav{max-width:1040px;margin:12px auto;padding:0 16px;display:flex;gap:6px;overflow-x:auto}
+nav button{flex:1;min-width:92px;padding:10px;border:1px solid var(--ln);background:var(--card);color:var(--mut);border-radius:10px;font-weight:600;cursor:pointer;white-space:nowrap}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{max-width:1040px;margin:auto;padding:0 16px 32px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px}
+.stat b{font-size:26px;display:block}.stat span{color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{padding:9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx);font-size:14px}
+.btn{padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-weight:600;cursor:pointer}
+.btn.g{background:var(--ok)}.btn.r{background:var(--bad)}.btn.w{background:var(--warn)}.btn.l{background:transparent;color:var(--mut);border:1px solid var(--ln)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:660px}
+th,td{border-bottom:1px solid var(--ln);padding:8px;text-align:left;font-size:13px;vertical-align:top}
+th{color:var(--mut);font-weight:600}
+.chip{display:inline-block;background:var(--ac);color:#fff;border-radius:6px;padding:3px 7px;margin:2px 0;font-size:12px;cursor:pointer}
+.chip.bad{background:var(--bad)}
+.mut{color:var(--mut);font-size:13px}
+.emp{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ln);margin-right:6px}.dot.on{background:var(--ok)}.dot.br{background:var(--warn)}
+.bars{display:flex;gap:10px;align-items:flex-end;height:140px;padding-top:8px}
+.bars div{flex:1;text-align:center;font-size:12px;color:var(--mut);display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.bars i{display:block;background:var(--ac);border-radius:6px 6px 0 0;min-height:2px}
+.alert{background:color-mix(in srgb,var(--bad) 12%,var(--card));border:1px solid var(--bad);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px}
+.tag{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--ln)}.tag.ok{background:var(--ok);color:#fff}.tag.no{background:var(--bad);color:#fff}
+</style>
+</head>
+<body>
+<header><h1>Shift<span>Wise</span></h1><button class="btn l" onclick="theme()">🌓</button></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<script>
+const D=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],A=[1,1,1,1,1,1,1];
+let S={emps:[{id:1,name:'Ava',role:'Server',rate:18,pin:'1111',av:[1,1,1,1,1,1,0]},{id:2,name:'Ben',role:'Cook',rate:21,pin:'2222',av:[1,1,1,1,1,0,0]},{id:3,name:'Cleo',role:'Host',rate:16,pin:'3333',av:[0,0,1,1,1,1,1]},{id:4,name:'Dev',role:'Server',rate:17,pin:'4444',av:[1,0,1,0,1,1,1]}],shifts:[],punches:[],off:[],nid:10,need:2,tab:'dash',msg:''};
+try{const x=localStorage.getItem('shiftwise');if(x)S=Object.assign(S,JSON.parse(x))}catch(e){}
+const save=()=>{try{localStorage.setItem('shiftwise',JSON.stringify(S))}catch(e){}};
+const $=s=>document.querySelector(s),E=id=>S.emps.find(e=>e.id==id)||{name:'?',rate:0};
+const toM=t=>{const [h,m]=t.split(':').map(Number);return h*60+m};
+const hrs=s=>{let h=(toM(s.end)-toM(s.start))/60;return h<=0?h+24:h};
+const fmt=ms=>{const m=Math.max(0,Math.floor(ms/60000));return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'};
+const net=p=>(p.out||Date.now())-p.in-p.br.reduce((a,b)=>a+((b.e||Date.now())-b.s),0);
+const cur=id=>S.punches.find(p=>p.emp==id&&!p.out);
+const onBreak=p=>p&&p.br.some(b=>!b.e);
+const tm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const offOn=(id,d)=>S.off.some(o=>o.emp==id&&o.day==d&&o.st=='approved');
+function theme(){const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'}
+function issues(){
+ const o=[];
+ S.emps.forEach(e=>{
+  const mine=S.shifts.filter(s=>s.emp==e.id),h=mine.reduce((a,s)=>a+hrs(s),0);
+  if(h>40)o.push(`${e.name} is scheduled ${h.toFixed(1)}h (overtime).`);
+  D.forEach((d,i)=>{const day=mine.filter(s=>s.day==i);
+   if(day.length>1&&day.some((a,x)=>day.some((b,y)=>x<y&&toM(a.start)<toM(b.end)&&toM(b.start)<toM(a.end))))o.push(`${e.name} has overlapping shifts on ${d}.`);
+   if(day.length&&offOn(e.id,i))o.push(`${e.name} is scheduled on ${d} but has approved time off.`);
+   if(day.length&&!e.av[i])o.push(`${e.name} is scheduled on ${d} but marked unavailable.`)})});
+ D.forEach((d,i)=>{if(S.shifts.filter(s=>s.day==i).length<S.need)o.push(`${d} is understaffed (needs ${S.need}).`)});
+ return o;
+}
+const bad=s=>{const day=S.shifts.filter(x=>x.emp==s.emp&&x.day==s.day&&x.id!=s.id);return day.some(b=>toM(s.start)<toM(b.end)&&toM(b.start)<toM(s.end))||offOn(s.emp,s.day)||!E(s.emp).av?.[s.day]};
+function render(){
+ $('#nav').innerHTML=[['dash','Dashboard'],['sched','Schedule'],['clock','Time clock'],['sheet','Timesheets'],['off','Time off'],['team','Team']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';S.msg='';render()">${l}</button>`).join('');
+ $('#app').innerHTML=({dash,sched,clock,sheet,off,team})[S.tab]();save();
+}
+function dash(){
+ const per=D.map((d,i)=>S.shifts.filter(s=>s.day==i).reduce((a,s)=>a+hrs(s),0)),mx=Math.max(1,...per);
+ const cost=S.shifts.reduce((a,s)=>a+hrs(s)*E(s.emp).rate,0),tot=per.reduce((a,b)=>a+b,0);
+ const on=S.emps.filter(e=>cur(e.id)).length,iss=issues(),pend=S.off.filter(o=>o.st=='pending').length;
+ return `<div class="grid"><div class="stat"><b>${on}/${S.emps.length}</b><span>On the clock now</span></div><div class="stat"><b>${tot.toFixed(0)}h</b><span>Scheduled this week</span></div><div class="stat"><b>$${cost.toFixed(0)}</b><span>Projected labor cost</span></div><div class="stat"><b>${pend}</b><span>Pending time-off requests</span></div></div>
+ <div class="card"><b>Scheduled hours by day</b><div class="bars">${per.map((h,i)=>`<div><span>${h.toFixed(0)}h</span><i style="height:${h/mx*100}%"></i>${D[i]}</div>`).join('')}</div></div>
+ <div class="card"><b>Alerts</b><div style="margin-top:8px">${iss.map(t=>`<div class="alert">⚠️ ${t}</div>`).join('')||'<p class="mut">All clear. No conflicts or coverage gaps.</p>'}</div></div>`;
+}
+function sched(){
+ const opts=S.emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+ const rows=S.emps.map(e=>`<tr><th>${e.name}<div class="mut">${e.role}</div></th>${D.map((d,i)=>`<td>${offOn(e.id,i)?'<span class="tag">Off</span><br>':''}${S.shifts.filter(s=>s.emp==e.id&&s.day==i).map(s=>`<div class="chip ${bad(s)?'bad':''}" title="Click to remove" onclick="delShift(${s.id})">${s.start}–${s.end}</div>`).join('')}</td>`).join('')}</tr>`).join('');
+ return `<div class="card"><div class="row"><select id="se">${opts}</select><select id="sd">${D.map((d,i)=>`<option value="${i}">${d}</option>`).join('')}</select><input id="ss" type="time" value="09:00"><input id="sn" type="time" value="17:00"><button class="btn" onclick="addShift()">Add shift</button></div>
+ <div class="row" style="margin-top:10px"><span class="mut">Staff needed per day</span><input type="number" min="1" max="10" value="${S.need}" style="width:70px" onchange="S.need=+this.value;save()"><button class="btn w" onclick="auto()">✨ Auto-schedule</button><button class="btn l" onclick="S.shifts=[];render()">Clear week</button></div>
+ <p class="mut">${S.msg||'Auto-schedule respects availability, approved time off, and a 40h cap. Red shifts have conflicts. Click a shift to remove it.'}</p></div>
+ <div class="card scroll"><table><tr><th></th>${D.map(d=>`<th>${d}</th>`).join('')}</tr>${rows}</table></div>`;
+}
+function addShift(){S.shifts.push({id:S.nid++,emp:+$('#se').value,day:+$('#sd').value,start:$('#ss').value,end:$('#sn').value});render()}
+function delShift(id){S.shifts=S.shifts.filter(s=>s.id!=id);render()}
+function auto(){
+ let n=0;const H=id=>S.shifts.filter(s=>s.emp==id).reduce((a,s)=>a+hrs(s),0);
+ D.forEach((d,i)=>{let c=S.shifts.filter(s=>s.day==i).length;
+  while(c<S.need){
+   const p=S.emps.filter(e=>e.av[i]&&!offOn(e.id,i)&&!S.shifts.some(s=>s.emp==e.id&&s.day==i)&&H(e.id)+8<=40).sort((a,b)=>H(a.id)-H(b.id))[0];
+   if(!p)break;
+   const late=c%2;S.shifts.push({id:S.nid++,emp:p.id,day:i,start:late?'12:00':'09:00',end:late?'20:00':'17:00'});c++;n++}});
+ S.msg=n?`Auto-schedule added ${n} shift${n>1?'s':''}.`:'Nothing to add. Coverage is already met or no one is available.';render();
+}
+function clock(){
+ return `<div class="card"><p class="mut">Enter your PIN to clock in/out or take a break. (Demo PINs: Ava 1111, Ben 2222, Cleo 3333, Dev 4444)</p>${S.msg?`<div class="alert">${S.msg}</div>`:''}${S.emps.map(e=>{const p=cur(e.id),b=onBreak(p);
+ return `<div class="emp"><div><span class="dot ${p?(b?'br':'on'):''}"></span><b>${e.name}</b> <span class="mut">${e.role}</span><div class="mut">${p?(b?'On break':'Working')+' · since '+tm(p.in)+' · '+fmt(net(p))+' paid':'Clocked out'}</div></div>
+ <div class="row"><input id="pin${e.id}" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" style="width:80px"><button class="btn ${p?'r':'g'}" onclick="punch(${e.id},'io')">${p?'Clock out':'Clock in'}</button>${p?`<button class="btn w" onclick="punch(${e.id},'br')">${b?'End break':'Start break'}</button>`:''}</div></div>`}).join('')}</div>`;
+}
+function punch(id,k){
+ const e=E(id),v=$('#pin'+id).value;
+ if(v!==e.pin){S.msg='Wrong PIN for '+e.name+'.';return render()}
+ S.msg='';const p=cur(id);
+ if(k=='io'){if(p){if(onBreak(p))p.br.find(b=>!b.e).e=Date.now();p.out=Date.now()}else S.punches.push({emp:id,in:Date.now(),out:null,br:[]})}
+ else if(p){const b=p.br.find(b=>!b.e);if(b)b.e=Date.now();else p.br.push({s:Date.now(),e:null})}
+ render();
+}
+setInterval(()=>{if(S.tab=='clock'&&!document.activeElement?.id?.startsWith('pin'))render()},30000);
+function calc(e){const ps=S.punches.filter(p=>p.emp==e.id&&p.out),ms=ps.reduce((a,p)=>a+net(p),0),h=ms/36e5,ot=Math.max(0,h-40);return{ps,ms,h,ot,pay:(h-ot)*e.rate+ot*e.rate*1.5}}
+function sheet(){
+ const rows=S.emps.map(e=>{const c=calc(e);return `<tr><td><b>${e.name}</b></td><td>${c.ps.length}</td><td>${fmt(c.ms)}</td><td>${c.ot>0?c.ot.toFixed(1)+'h':'-'}</td><td>$${c.pay.toFixed(2)}</td></tr>`}).join('');
+ const gt=S.emps.reduce((a,e)=>a+calc(e).pay,0);
+ const log=S.punches.slice().reverse().slice(0,12).map(p=>`<tr><td>${E(p.emp).name}</td><td>${new Date(p.in).toLocaleDateString([],{month:'short',day:'numeric'})} ${tm(p.in)}</td><td>${p.out?tm(p.out):'<i>active</i>'}</td><td>${fmt(p.br.reduce((a,b)=>a+((b.e||Date.now())-b.s),0))}</td><td>${fmt(net(p))}</td></tr>`).join('');
+ return `<div class="card scroll"><table><tr><th>Employee</th><th>Shifts</th><th>Paid hours</th><th>Overtime (1.5x)</th><th>Est. gross pay</th></tr>${rows}<tr><td colspan="4"><b>Total payroll</b></td><td><b>$${gt.toFixed(2)}</b></td></tr></table>
+ <p><button class="btn" onclick="csv()">Copy CSV</button> <span class="mut" id="cm"></span></p></div>
+ <div class="card scroll"><b>Recent punches</b><table><tr><th>Who</th><th>In</th><th>Out</th><th>Breaks</th><th>Paid</th></tr>${log||'<tr><td colspan="5" class="mut">No punches yet.</td></tr>'}</table><p><button class="btn l" onclick="if(confirm('Clear all punches?')){S.punches=[];render()}">Clear punches</button></p></div>`;
+}
+function csv(){
+ const t='Employee,Role,Shifts,PaidHours,OvertimeHours,GrossPay\n'+S.emps.map(e=>{const c=calc(e);return [e.name,e.role,c.ps.length,c.h.toFixed(2),c.ot.toFixed(2),c.pay.toFixed(2)].join(',')}).join('\n');
+ const done=ok=>{const m=$('#cm');if(m)m.textContent=ok?'Copied! Paste into Excel or Sheets.':'Copy blocked by browser.'};
+ try{navigator.clipboard.writeText(t).then(()=>done(1),()=>done(0))}catch(e){done(0)}
+}
+function off(){
+ const opts=S.emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+ return `<div class="card"><div class="row"><select id="oe">${opts}</select><select id="od">${D.map((d,i)=>`<option value="${i}">${d}</option>`).join('')}</select><input id="on" placeholder="Reason (optional)"><button class="btn" onclick="S.off.push({id:S.nid++,emp:+$('#oe').value,day:+$('#od').value,note:$('#on').value,st:'pending'});render()">Request time off</button></div></div>
+ <div class="card">${S.off.map(o=>`<div class="emp"><span><b>${E(o.emp).name}</b> · ${D[o.day]} <span class="mut">${o.note||''}</span></span><span class="row"><span class="tag ${o.st=='approved'?'ok':o.st=='denied'?'no':''}">${o.st}</span>${o.st=='pending'?`<button class="btn g" onclick="setOff(${o.id},'approved')">Approve</button><button class="btn r" onclick="setOff(${o.id},'denied')">Deny</button>`:`<button class="btn l" onclick="S.off=S.off.filter(x=>x.id!=${o.id});render()">Remove</button>`}</span></div>`).join('')||'<p class="mut">No requests yet.</p>'}</div>`;
+}
+function setOff(id,st){S.off.find(o=>o.id==id).st=st;render()}
+function team(){
+ return `<div class="card"><div class="row"><input id="tn" placeholder="Name"><input id="tr" placeholder="Role"><input id="tt" type="number" placeholder="$/hr" style="width:90px"><input id="tp" placeholder="PIN" maxlength="6" style="width:80px"><button class="btn" onclick="addEmp()">Add</button></div></div>
+ <div class="card">${S.emps.map(e=>`<div class="emp"><span><b>${e.name}</b> <span class="mut">${e.role} · $${e.rate}/hr</span><div class="row" style="margin-top:6px">${D.map((d,i)=>`<label class="mut"><input type="checkbox" ${e.av[i]?'checked':''} onchange="E(${e.id}).av[${i}]=this.checked?1:0;save()"> ${d}</label>`).join('')}</div></span><button class="btn l" onclick="delEmp(${e.id})">Remove</button></div>`).join('')}<p class="mut">Checked days = availability used by auto-schedule.</p></div>`;
+}
+function addEmp(){const n=$('#tn').value.trim();if(!n)return;S.emps.push({id:S.nid++,name:n,role:$('#tr').value||'Staff',rate:+$('#tt').value||15,pin:$('#tp').value||String(1000+Math.floor(Math.random()*9000)),av:[1,1,1,1,1,1,1]});render()}
+function delEmp(id){S.emps=S.emps.filter(e=>e.id!=id);['shifts','punches','off'].forEach(k=>S[k]=S[k].filter(x=>x.emp!=id));render()}
+render();
+</script>
+</body>
+</html>
